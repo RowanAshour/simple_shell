@@ -12,15 +12,34 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define BUF_FLUSH '\0'
+#define BUF_FLUSH (-1)
 #define HIST_FILE ".history"
 #define HIST_MAX 4096
-
 #define CONVERT_UNSIGNED (1 << 0)
 #define CONVERT_LOWERCASE (1 << 1)
-
 #define WRITE_BUF_SIZE 1024
-#define BUF_FLUSH '\0'
+
+/* Define constants */
+#define CMD_AND 1
+#define CMD_OR 2
+#define CMD_CHAIN 3
+
+/* Define structure for the list node */
+typedef struct list_s
+{
+    char *str;
+    struct list_s *next;
+} list_t;
+
+/* Define structure for information about the shell */
+typedef struct info_s
+{
+    char **argv;
+    int status;
+    int cmd_buf_type;
+    list_t *alias;
+    list_t *env;
+} info_t;
 
 typedef struct list_s {
     char *str;
@@ -102,6 +121,169 @@ typedef struct list {
     struct list *next;
 } list_t;
 
+typedef struct {
+    // Define your info_t structure members here
+} info_t;
+
+/**
+ * struct info - holds shell information
+ * @env: array of environment variables
+ * @alias: linked list of aliases
+ * @argv: array of command arguments
+ * @arg: buffer for command input
+ * @path: path of the command
+ * @status: exit status
+ * @lineCount: line count
+ * @lineCountFlag: line count flag
+ * @errNum: error number
+ * @environ: copy of environment variables as strings
+ */
+typedef struct info
+{
+    char **env;
+    list_t *alias;
+    char **argv;
+    char *arg;
+    char *path;
+    int status;
+    ssize_t lineCount;
+    int lineCountFlag;
+    int errNum;
+    char **environ;
+    list_t *history;
+} info_t;
+
+/**
+ * struct builtin - holds shell builtin command information
+ * @type: command name
+ * @func: corresponding function
+ */
+typedef struct builtin
+{
+    char *type;
+    int (*func)(info_t *infoData);
+} builtin_table;
+
+/**
+ * struct list - linked list structure
+ * @str: string data
+ * @num: numeric data
+ * @next: pointer to the next node
+ */
+typedef struct list
+{
+    char *str;
+    ssize_t num;
+    struct list *next;
+} list_t;
+
+/**
+ * struct info_s - structure to hold shell information
+ * @argv: argument vector
+ * @env: environment variables
+ * @status: exit status
+ * @line_count: line count
+ * @linecount_flag: flag for line count
+ * @path: path
+ */
+typedef struct info_s
+{
+	char **argv;
+	char **env;
+	int status;
+	int line_count;
+	int linecount_flag;
+	char *path;
+} info_t;
+
+/**
+ * custom_strcpy - copies a string
+ * @destination: the destination
+ * @source: the source
+ *
+ * Return: pointer to destination
+ */
+char *custom_strcpy(char *destination, char *source);
+
+/**
+ * custom_strdup - duplicates a string
+ * @str: the string to duplicate
+ *
+ * Return: pointer to the duplicated string
+ */
+char *custom_strdup(const char *str);
+
+/**
+ * custom_puts - prints an input string
+ * @str: the string to be printed
+ *
+ * Return: Nothing
+ */
+void custom_puts(char *str);
+
+/**
+ * custom_putchar - writes the character c to stdout
+ * @character: The character to print
+ *
+ * Return: On success 1.
+ * On error, -1 is returned, and errno is set appropriately.
+ */
+int custom_putchar(char character);
+
+/**
+ * hsh - main shell loop
+ * @info: the parameter & return info struct
+ * @av: the argument vector from main()
+ *
+ * Return: 0 on success, 1 on error, or error code
+ */
+int hsh(info_t *info, char **av);
+
+/**
+ * find_builtin - finds a builtin command
+ * @info: the parameter & return info struct
+ *
+ * Return: -1 if builtin not found,
+ *         0 if builtin executed successfully,
+ *         1 if builtin found but not successful,
+ *         -2 if builtin signals exit()
+ */
+int find_builtin(info_t *info);
+
+/**
+ * find_cmd - finds a command in PATH
+ * @info: the parameter & return info struct
+ *
+ * Return: void
+ */
+void find_cmd(info_t *info);
+
+/**
+ * fork_cmd - forks a an exec thread to run cmd
+ * @info: the parameter & return info struct
+ *
+ * Return: void
+ */
+void fork_cmd(info_t *info);
+/**
+ * _split_string - splits a string into words. Repeat delimiters are ignored
+ * @input_str: the input string
+ * @delimiter_str: the delimiter string
+ *
+ * Return: a pointer to an array of strings, or NULL on failure
+ */
+char **_split_string(char *input_str, char *delimiter_str);
+
+/**
+ * _split_string2 - splits a string into words
+ * @input_str: the input string
+ * @delimiter: the delimiter
+ *
+ * Return: a pointer to an array of strings, or NULL on failure
+ */
+char **_split_string2(char *input_str, char delimiter);
+
+
 int set_environment_variable(info_t *info_data, char *variable, char *value);
 int remove_environment_variable(info_t *info_data, char *variable);
 char **fetch_environment(info_t *info_data);
@@ -146,6 +328,25 @@ int convert_to_integer(char *str);
 int is_alphabetic(int character);
 int check_interactive(info_t *info_data);
 int is_separator(char character, char *separator_str);
-
+int customFree(void **targetPtr);
+int isExecutable(info_t *infoData, char *filePath);
+char *duplicateSubstring(char *pathString, int start, int stop);
+char *findCmdInPath(info_t *infoData, char *pathString, char *cmd);
+char *_custom_memset(char *dest, char byte, unsigned int size);
+void free_string_array(char **str_array);
+void *custom_realloc(void *ptr, unsigned int old_size, unsigned int new_size);
+int custom_shell(info_t *infoData, char **arguments);
+int find_builtin(info_t *infoData);
+void find_command(info_t *infoData);
+void fork_command(info_t *infoData);
+int custom_strlen(char *str);
+int custom_strcmp(char *str1, char *str2);
+char *custom_starts_with(const char *haystack, const char *needle);
+char *custom_strcat(char *destination, char *source);
+int isChainDelimiter(info_t *info, char *buf, size_t *p);
+void checkChain(info_t *info, char *buf, size_t *p, size_t i, size_t len);
+int replaceAliases(info_t *info);
+int replaceVariables(info_t *info);
+int replaceString(char **old, char *newStr);
 
 #endif /* NEW_SHELL_H */
